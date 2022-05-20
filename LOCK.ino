@@ -78,8 +78,8 @@ void loop()
     int i = 0, tmp;
     char num[10];
 
-    int data1, data2;
-    char cdata1[20], cdata2[20];
+    int data1, data2, state;
+    char cdata1[20], cdata2[20], cstate[20];
 
     /* EDP 连接 */
     if (!edp_connect)
@@ -108,7 +108,7 @@ void loop()
     /*心跳包、上传数据包
     *data1、2即发送的数据
     */
-    if (tick > 200 && edp_connect) //每50对应约8秒
+    if (tick > 150 && edp_connect) //每50对应约8秒
     {
         data1 = 233;
         data2 = 666;
@@ -143,21 +143,19 @@ void loop()
                 edpCommandReqParse(&rcv_pkt, edp_cmd_id, edp_command, &rm_len, &id_len, &cmd_len);
 
                 sscanf(edp_command, "%[^:]:%s", datastr, val);// switch:[1/0] 
-                /*
-                Serial.println("edp_command:");
-                Serial.println(edp_command);
-                Serial.println("datastr:");
-                Serial.println(datastr);
-                Serial.println("val:");
-                Serial.println(val);
-                Serial.println("val[1]:");
-                Serial.println(val[1]);*/
 
-                if (val[0] == '1')   digitalWrite(lock_pin, HIGH);
-                if (val[0] == '0')  digitalWrite(lock_pin, LOW);
-                //if (atoi(val[1]) == 1)     digitalWrite(lock_pin, HIGH);
-                //else                        digitalWrite(lock_pin, LOW);   // 使Led灭
-
+                if (val[1] == '1')
+                {
+                    digitalWrite(lock_pin, HIGH);
+                    state = 1;
+                }   
+                if (val[1] == '0')  
+                {
+                    digitalWrite(lock_pin, LOW);
+                    state = 0;
+                }
+                sprintf(cstate, "%d", state); 
+                packetSend(packetDataSaveTrans(NULL, "switch", cstate)); //同步开关状态
                 break;
             default:
                 ;
