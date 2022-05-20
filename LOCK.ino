@@ -2,15 +2,12 @@
 
 #define KEY  "KjUxkA8bV1JUnlVctGaVCsITH5Y="    //APIkey 
 #define ID   "910385808"                          //设备ID
-
-#define PUSH_ID NULL
-String comdata = "";
-
+#define lock_pin 8
+#define wifi_pin 13
 #define _baudrate   115200
-
 #define WIFI_UART   Serial
-int tick = 200;
 
+int tick = 200;
 edp_pkt* pkt;
 
 /*
@@ -51,8 +48,8 @@ void setup()
     char buf[100] = { 0 };
     int tmp;
 
-    pinMode(13, OUTPUT); 
-    pinMode(8, OUTPUT);
+    pinMode(wifi_pin, OUTPUT); //wifi指示灯
+    pinMode(lock_pin, OUTPUT);//物联网控制引脚
 
     WIFI_UART.begin(_baudrate);
     WIFI_UART.setTimeout(3000);    //设置find超时时间
@@ -61,8 +58,8 @@ void setup()
 
     delay(2000);
     while (!doCmdOk("AT", "OK"));
-    digitalWrite(13, LOW);  
-    digitalWrite(8, LOW);
+    digitalWrite(wifi_pin, LOW);  
+    digitalWrite(lock_pin, LOW);
     while (!doCmdOk("AT+CWMODE=3", "OK"));            //工作模式
 
 
@@ -108,7 +105,9 @@ void loop()
 
 
     tick++;
-    /*心跳包*/
+    /*心跳包、上传数据包
+    *data1、2即发送的数据
+    */
     if (tick > 200 && edp_connect) //每50对应约8秒
     {
         data1 = 233;
@@ -124,6 +123,7 @@ void loop()
     }
 
 
+    /*接收数据包*/
     while (WIFI_UART.available())
     {
         readEdpPkt(&rcv_pkt);
@@ -144,8 +144,8 @@ void loop()
 
                 sscanf(edp_command, "%[^:]:%s", datastr, val);// switch:[1/0] 
 
-                if (val[0] == '1')   digitalWrite(8, HIGH);
-                if (val[0] == '0')  digitalWrite(8, LOW);
+                if (val[0] == '1')   digitalWrite(lock_pin, HIGH);
+                if (val[0] == '0')  digitalWrite(lock_pin, LOW);
 
                 break;
             default:
@@ -154,8 +154,10 @@ void loop()
             }
         }
     }
+    
     if (rcv_pkt.len > 0)
         packetClear(&rcv_pkt);
+
     delay(150);
 }
 
@@ -188,6 +190,7 @@ void packetSend(edp_pkt* pkt)
     }
 }
 
+/*用于调试时断点查看rcv，实际工作中无用*/
 void rcvDebug(unsigned char* rcv, int len)
 {
     int i;
