@@ -130,7 +130,7 @@ void loop()
         if (isEdpPkt(&rcv_pkt))
         {
             pkt_type = rcv_pkt.data[0];
-            switch (pkt_type)
+            switch (pkt_type) 
             {
             case CMDREQ:
                 char edp_command[50];
@@ -143,9 +143,20 @@ void loop()
                 edpCommandReqParse(&rcv_pkt, edp_cmd_id, edp_command, &rm_len, &id_len, &cmd_len);
 
                 sscanf(edp_command, "%[^:]:%s", datastr, val);// switch:[1/0] 
+                /*
+                Serial.println("edp_command:");
+                Serial.println(edp_command);
+                Serial.println("datastr:");
+                Serial.println(datastr);
+                Serial.println("val:");
+                Serial.println(val);
+                Serial.println("val[1]:");
+                Serial.println(val[1]);*/
 
                 if (val[0] == '1')   digitalWrite(lock_pin, HIGH);
                 if (val[0] == '0')  digitalWrite(lock_pin, LOW);
+                //if (atoi(val[1]) == 1)     digitalWrite(lock_pin, HIGH);
+                //else                        digitalWrite(lock_pin, LOW);   // 使Led灭
 
                 break;
             default:
