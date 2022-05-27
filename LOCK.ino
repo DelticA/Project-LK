@@ -2,86 +2,34 @@
 #include "config.c"
 
 edp_pkt* pkt;
-
 int tick = tick_round;
 
-/*
-* doCmdOk
-* 发送命令至模块，从回复中获取期待的关键字
-* keyword: 所期待的关键字
-* 成功找到关键字返回true，否则返回false
-*/
-bool doCmdOk(String data, char* keyword)
-{
-    bool result = false;
-    if (data != "")   //对于tcp连接命令，直接等待第二次回复
-    {
-        WIFI_UART.println(data);  //发送AT指令
-    }
-    if (data == "AT")   //检查模块存在
-        delay(2000);
-    else
-        while (!WIFI_UART.available());  // 等待模块回复
-
-    delay(200);
-    if (WIFI_UART.find(keyword))   //返回值判断
-    {
-        result = true;
-    }
-    else
-    {
-        result = false;
-    }
-    while (WIFI_UART.available()) WIFI_UART.read();   //清空串口接收缓存
-    delay(500); //指令时间间隔
-    return result;
+void connectONENET(){
+    while (!doCmdOk("AT", "OK"));
+    while (!doCmdOk("AT+CWMODE=3", "OK"));            //工作模式
+    while (!doCmdOk("AT+CWJAP=\"123\",\"lfc12345\"", "OK")); //wifiname:123, pswd: lfc12345
+    while (!doCmdOk("AT+CIPSTART=\"TCP\",\"jjfaedp.hedevice.com\",876", "OK"));//onenet连接点
+    while (!doCmdOk("AT+CIPMODE=1", "OK"));           //透传模式
+    while (!doCmdOk("AT+CIPSEND", ">"));              //开始发送
 }
 
-void Open(){
-  digitalWrite(close_pin,LOW);
-  digitalWrite(open_pin,HIGH);
-  delay(600);
-  digitalWrite(close_pin,LOW);
-  digitalWrite(open_pin,LOW);
-}
-
-void Close(){
-  digitalWrite(close_pin,HIGH);
-  digitalWrite(open_pin,LOW);
-  delay(600);
-  digitalWrite(close_pin,LOW);
-  digitalWrite(open_pin,LOW);
-}
-
-
-void setup()
-{
-    char buf[100] = { 0 };
-    int tmp;
-
+void setup(){
     pinMode(wifi_pin, OUTPUT); //wifi指示灯引脚
     pinMode(lock_pin, OUTPUT);//物联网控制引脚
     pinMode(close_pin,OUTPUT);//门锁开关引脚
     pinMode(open_pin,OUTPUT);
+    digitalWrite(lock_pin, LOW);
+    digitalWrite(wifi_pin, LOW); 
 
     WIFI_UART.begin(_baudrate);
     WIFI_UART.setTimeout(3000);    //设置find超时时间
     delay(3000);
     Serial.setTimeout(100);
-
     delay(2000);
-    while (!doCmdOk("AT", "OK"));
-    digitalWrite(wifi_pin, LOW);  
-    digitalWrite(lock_pin, LOW);
-    while (!doCmdOk("AT+CWMODE=3", "OK"));            //工作模式
-    while (!doCmdOk("AT+CWJAP=\"123\",\"lfc12345\"", "OK"));
-    while (!doCmdOk("AT+CIPSTART=\"TCP\",\"jjfaedp.hedevice.com\",876", "OK"));
-    while (!doCmdOk("AT+CIPMODE=1", "OK"));           //透传模式
-    while (!doCmdOk("AT+CIPSEND", ">"));              //开始发送
+    connectONENET();
 }
 
-void loop()
-{
+void loop(){
     static int edp_connect = 0;
     bool trigger = false;
     edp_pkt rcv_pkt;
@@ -93,34 +41,22 @@ void loop()
     char cdata1[20], cdata2[20], cstate[20];
 
     /* EDP 连接 */
-    if (!edp_connect)
-    {
+    if (!edp_connect){
         while (WIFI_UART.available()) WIFI_UART.read(); //清空串口接收缓存
         packetSend(packetConnect(ID, KEY));             //发送EPD连接包
         while (!WIFI_UART.available());                 //等待EDP连接应答
-        if ((tmp = WIFI_UART.readBytes(rcv_pkt.data, sizeof(rcv_pkt.data))) > 0)
-        {
+        if ((tmp = WIFI_UART.readBytes(rcv_pkt.data, sizeof(rcv_pkt.data))) > 0){
             rcvDebug(rcv_pkt.data, tmp);
-
-            if (rcv_pkt.data[0] == 0x20 && rcv_pkt.data[2] == 0x00 && rcv_pkt.data[3] == 0x00)
-            {
+            if (rcv_pkt.data[0] == 0x20 && rcv_pkt.data[2] == 0x00 && rcv_pkt.data[3] == 0x00){
                 edp_connect = 1;
-
-                digitalWrite(13, HIGH);   // 使Led灭
+                digitalWrite(wifi_pin, HIGH);   // EDP连接状态
             }
-            else
-                ;
         }
         packetClear(&rcv_pkt);
     }
 
-
     tick++;
-    /*心跳包、上传数据包
-    *data1、2即发送的数据
-    */
-    if (tick > 150 && edp_connect) //每50对应约8秒
-    {
+    if (tick > 150 && edp_connect){ //心跳包, 每50对应约8秒
         data1 = 233;
         data2 = 666;
         sprintf(cdata1, "%d", data1); //int型转换char型
@@ -133,16 +69,12 @@ void loop()
         delay(500);
     }
 
-
     /*接收数据包*/
-    while (WIFI_UART.available())
-    {
+    while (WIFI_UART.available()){
         readEdpPkt(&rcv_pkt);
-        if (isEdpPkt(&rcv_pkt))
-        {
+        if (isEdpPkt(&rcv_pkt)){
             pkt_type = rcv_pkt.data[0];
-            switch (pkt_type) 
-            {
+            switch (pkt_type) {
             case CMDREQ:
                 char edp_command[50];
                 char edp_cmd_id[40];
@@ -155,14 +87,12 @@ void loop()
 
                 sscanf(edp_command, "%[^:]:%s", datastr, val);// switch:[1/0] 
 
-                if (val[1] == '1')
-                {
+                if (val[1] == '1'){
                     digitalWrite(lock_pin, HIGH);
                     Open();
                     state = 1;
                 }   
-                if (val[1] == '0')  
-                {
+                if (val[1] == '0')  {
                     digitalWrite(lock_pin, LOW);
                     Close();
                     state = 0;
@@ -179,8 +109,48 @@ void loop()
     
     if (rcv_pkt.len > 0)
         packetClear(&rcv_pkt);
-
     delay(150);
+}
+
+/*
+* doCmdOk
+* 发送命令至模块，从回复中获取期待的关键字
+* keyword: 所期待的关键字
+* 成功找到关键字返回true，否则返回false
+*/
+bool doCmdOk(String data, char* keyword){
+    bool result = false;
+    if (data != "")  { //对于tcp连接命令，直接等待第二次回复
+        WIFI_UART.println(data);  //发送AT指令
+    }
+    if (data == "AT")   //检查模块存在
+        delay(2000);
+    else
+        while (!WIFI_UART.available());  // 等待模块回复
+    delay(200);
+    if (WIFI_UART.find(keyword))   //返回值判断
+        result = true;
+    else
+        result = false;
+    while (WIFI_UART.available()) WIFI_UART.read();   //清空串口接收缓存
+    delay(500); //指令时间间隔
+    return result;
+}
+
+void Open(){ //开门
+  digitalWrite(close_pin,LOW);
+  digitalWrite(open_pin,HIGH);
+  delay(600);
+  digitalWrite(close_pin,LOW);
+  digitalWrite(open_pin,LOW);
+}
+
+void Close(){ //关门
+  digitalWrite(close_pin,HIGH);
+  digitalWrite(open_pin,LOW);
+  delay(600);
+  digitalWrite(close_pin,LOW);
+  digitalWrite(open_pin,LOW);
 }
 
 /*
