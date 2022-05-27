@@ -2,8 +2,10 @@
 
 #define KEY  "KjUxkA8bV1JUnlVctGaVCsITH5Y="    //APIkey 
 #define ID   "910385808"                          //设备ID
-#define lock_pin 8
+#define lock_pin 12
 #define wifi_pin 13
+#define open_pin 7
+#define close_pin 8
 #define _baudrate   115200
 #define WIFI_UART   Serial
 
@@ -43,13 +45,32 @@ bool doCmdOk(String data, char* keyword)
     return result;
 }
 
+void Open(){
+  digitalWrite(close_pin,LOW);
+  digitalWrite(open_pin,HIGH);
+  delay(600);
+  digitalWrite(close_pin,LOW);
+  digitalWrite(open_pin,LOW);
+}
+
+void Close(){
+  digitalWrite(close_pin,HIGH);
+  digitalWrite(open_pin,LOW);
+  delay(600);
+  digitalWrite(close_pin,LOW);
+  digitalWrite(open_pin,LOW);
+}
+
+
 void setup()
 {
     char buf[100] = { 0 };
     int tmp;
 
-    pinMode(wifi_pin, OUTPUT); //wifi指示灯
+    pinMode(wifi_pin, OUTPUT); //wifi指示灯引脚
     pinMode(lock_pin, OUTPUT);//物联网控制引脚
+    pinMode(close_pin,OUTPUT);//门锁开关引脚
+    pinMode(open_pin,OUTPUT);
 
     WIFI_UART.begin(_baudrate);
     WIFI_UART.setTimeout(3000);    //设置find超时时间
@@ -147,11 +168,13 @@ void loop()
                 if (val[1] == '1')
                 {
                     digitalWrite(lock_pin, HIGH);
+                    Open();
                     state = 1;
                 }   
                 if (val[1] == '0')  
                 {
                     digitalWrite(lock_pin, LOW);
+                    Close();
                     state = 0;
                 }
                 sprintf(cstate, "%d", state); 
