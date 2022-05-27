@@ -1,16 +1,9 @@
 #include "edp.c"
+#include "config.c"
 
-#define KEY  "KjUxkA8bV1JUnlVctGaVCsITH5Y="    //APIkey 
-#define ID   "910385808"                          //设备ID
-#define lock_pin 12
-#define wifi_pin 13
-#define open_pin 7
-#define close_pin 8
-#define _baudrate   115200
-#define WIFI_UART   Serial
-
-int tick = 200;
 edp_pkt* pkt;
+
+int tick = tick_round;
 
 /*
 * doCmdOk
@@ -24,7 +17,6 @@ bool doCmdOk(String data, char* keyword)
     if (data != "")   //对于tcp连接命令，直接等待第二次回复
     {
         WIFI_UART.println(data);  //发送AT指令
-
     }
     if (data == "AT")   //检查模块存在
         delay(2000);
@@ -82,8 +74,6 @@ void setup()
     digitalWrite(wifi_pin, LOW);  
     digitalWrite(lock_pin, LOW);
     while (!doCmdOk("AT+CWMODE=3", "OK"));            //工作模式
-
-
     while (!doCmdOk("AT+CWJAP=\"123\",\"lfc12345\"", "OK"));
     while (!doCmdOk("AT+CIPSTART=\"TCP\",\"jjfaedp.hedevice.com\",876", "OK"));
     while (!doCmdOk("AT+CIPMODE=1", "OK"));           //透传模式
