@@ -1,8 +1,13 @@
+#include <Wire.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 #include "edp.c"
 #include "config.c"
 
 edp_pkt* pkt;
 int tick = tick_round;
+OneWire oneWire(ONE_WIRE_BUS);    // 初始连接在单总线上的单总线设备
+DallasTemperature sensors(&oneWire);
 
 void connectONENET(){
     while (!doCmdOk("AT", "OK"));
@@ -18,6 +23,7 @@ void setup(){
     pinMode(lock_pin, OUTPUT);//物联网控制引脚
     pinMode(close_pin,OUTPUT);//门锁开关引脚
     pinMode(open_pin,OUTPUT);
+    pinMode(smoke_pin, INPUT);
     digitalWrite(lock_pin, LOW);
     digitalWrite(wifi_pin, LOW); 
 
@@ -27,6 +33,8 @@ void setup(){
     Serial.setTimeout(100);
     delay(2000);
     connectONENET();
+
+    sensors.begin(); 
 }
 
 void loop(){
@@ -37,7 +45,8 @@ void loop(){
     int i = 0, tmp;
     char num[10];
 
-    int data1, data2, state;
+    float data1;
+    int data1int, data2, state;
     char cdata1[20], cdata2[20], cstate[20];
 
     /* EDP 连接 */
@@ -57,15 +66,18 @@ void loop(){
 
     tick++;
     if (tick > 150 && edp_connect){ //心跳包, 每50对应约8秒
-        data1 = 233;
-        data2 = 666;
-        sprintf(cdata1, "%d", data1); //int型转换char型
+        sensors.requestTemperatures();
+        data1 = sensors.getTempCByIndex(0);
+        data1=data1*100;
+        data1int=int(data1);
+        data2 = analogRead(smoke_pin);
+        sprintf(cdata1, "%d", data1int); 
         sprintf(cdata2, "%d", data2); 
         tick = 0;
         delay(500);
         packetSend(packetDataSaveTrans(NULL, "data1", cdata1)); //将新数据值上传至数据流
         delay(500);
-        packetSend(packetDataSaveTrans(NULL, "data2", cdata1)); //将新数据值上传至数据流
+        packetSend(packetDataSaveTrans(NULL, "data2", cdata2)); //将新数据值上传至数据流
         delay(500);
     }
 

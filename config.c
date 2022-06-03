@@ -4,6 +4,8 @@
 #define close_pin 8
 #define lock_pin 12
 #define wifi_pin 13
+#define smoke_pin 0
 #define _baudrate   115200
 #define WIFI_UART   Serial
 #define tick_round 200
+#define ONE_WIRE_BUS 2 
