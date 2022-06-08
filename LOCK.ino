@@ -18,6 +18,12 @@ void setup(){
     pinMode(lock_pin, OUTPUT);//物联网控制引脚
     pinMode(close_pin,OUTPUT);//门锁开关引脚
     pinMode(open_pin,OUTPUT);
+<<<<<<< Updated upstream
+=======
+    pinMode(smoke_pin, INPUT);
+    pinMode(fire_pin,OUTPUT);
+    pinMode(password_pin, INPUT);
+>>>>>>> Stashed changes
     digitalWrite(lock_pin, LOW);
     digitalWrite(wifi_pin, LOW); 
 
@@ -40,6 +46,25 @@ void loop(){
     int data1, data2, state;
     char cdata1[20], cdata2[20], cstate[20];
 
+
+    int passwordCorrect = digitalRead(password_pin);
+    if(passwordCorrect==1){
+        Open();
+        delay(3000);
+        Close();
+    }
+
+
+    data2 = analogRead(smoke_pin);
+    if(fire_auto_open && data2>smoke_threshold){
+      digitalWrite(fire_pin, HIGH); 
+      Open();
+    }
+    if(fire_auto_open && data2<smoke_threshold_close){
+      digitalWrite(fire_pin, LOW); 
+    }
+        
+
     /* EDP 连接 */
     if (!edp_connect){
         while (WIFI_UART.available()) WIFI_UART.read(); //清空串口接收缓存
@@ -56,10 +81,19 @@ void loop(){
     }
 
     tick++;
+<<<<<<< Updated upstream
     if (tick > 150 && edp_connect){ //心跳包, 每50对应约8秒
         data1 = 233;
         data2 = 666;
         sprintf(cdata1, "%d", data1); //int型转换char型
+=======
+    if (tick > 40 && edp_connect){ //心跳包, 每50对应约8秒
+        sensors.requestTemperatures();
+        data1 = sensors.getTempCByIndex(0);
+        data1=data1*100;
+        data1int=int(data1);
+        sprintf(cdata1, "%d", data1int); 
+>>>>>>> Stashed changes
         sprintf(cdata2, "%d", data2); 
         tick = 0;
         delay(500);
@@ -88,12 +122,10 @@ void loop(){
                 sscanf(edp_command, "%[^:]:%s", datastr, val);// switch:[1/0] 
 
                 if (val[1] == '1'){
-                    digitalWrite(lock_pin, HIGH);
                     Open();
                     state = 1;
                 }   
                 if (val[1] == '0')  {
-                    digitalWrite(lock_pin, LOW);
                     Close();
                     state = 0;
                 }
@@ -138,6 +170,8 @@ bool doCmdOk(String data, char* keyword){
 }
 
 void Open(){ //开门
+  digitalWrite(lock_pin, HIGH);
+  
   digitalWrite(close_pin,LOW);
   digitalWrite(open_pin,HIGH);
   delay(600);
@@ -146,6 +180,8 @@ void Open(){ //开门
 }
 
 void Close(){ //关门
+  digitalWrite(lock_pin, LOW);
+  
   digitalWrite(close_pin,HIGH);
   digitalWrite(open_pin,LOW);
   delay(600);
