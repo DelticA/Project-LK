@@ -1,8 +1,18 @@
+#include <Wire.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 #include "edp.c"
 #include "config.c"
 
+#define WIFI_UART   Serial
+
 edp_pkt* pkt;
 int tick = tick_round;
+int state = 0;
+char cstate[20];
+
+OneWire oneWire(ONE_WIRE_BUS);    // 初始连接在单总线上的单总线设备
+DallasTemperature sensors(&oneWire);
 
 void connectONENET(){
     while (!doCmdOk("AT", "OK"));
@@ -18,12 +28,9 @@ void setup(){
     pinMode(lock_pin, OUTPUT);//物联网控制引脚
     pinMode(close_pin,OUTPUT);//门锁开关引脚
     pinMode(open_pin,OUTPUT);
-<<<<<<< Updated upstream
-=======
     pinMode(smoke_pin, INPUT);
     pinMode(fire_pin,OUTPUT);
     pinMode(password_pin, INPUT);
->>>>>>> Stashed changes
     digitalWrite(lock_pin, LOW);
     digitalWrite(wifi_pin, LOW); 
 
@@ -33,19 +40,21 @@ void setup(){
     Serial.setTimeout(100);
     delay(2000);
     connectONENET();
+
+    sensors.begin(); 
 }
 
 void loop(){
     static int edp_connect = 0;
-    bool trigger = false;
+    static bool trigger = true;
     edp_pkt rcv_pkt;
     unsigned char pkt_type;
     int i = 0, tmp;
     char num[10];
 
-    int data1, data2, state;
-    char cdata1[20], cdata2[20], cstate[20];
-
+    float data1;
+    int data1int, data2;
+    char cdata1[20], cdata2[20];
 
     int passwordCorrect = digitalRead(password_pin);
     if(passwordCorrect==1){
@@ -54,16 +63,18 @@ void loop(){
         Close();
     }
 
-
     data2 = analogRead(smoke_pin);
-    if(fire_auto_open && data2>smoke_threshold){
-      digitalWrite(fire_pin, HIGH); 
-      Open();
+    if(fire_auto_open && data2>smoke_threshold && trigger){
+        trigger = false;
+        digitalWrite(fire_pin, HIGH); 
+        //sprintf(cdata2, "%d", data2); //需要吗？
+        //packetSend(packetDataSaveTrans(NULL, "data2", cdata2));
+        Open();
     }
     if(fire_auto_open && data2<smoke_threshold_close){
-      digitalWrite(fire_pin, LOW); 
+        trigger = true;
+        digitalWrite(fire_pin, LOW); 
     }
-        
 
     /* EDP 连接 */
     if (!edp_connect){
@@ -81,25 +92,22 @@ void loop(){
     }
 
     tick++;
-<<<<<<< Updated upstream
-    if (tick > 150 && edp_connect){ //心跳包, 每50对应约8秒
-        data1 = 233;
-        data2 = 666;
-        sprintf(cdata1, "%d", data1); //int型转换char型
-=======
-    if (tick > 40 && edp_connect){ //心跳包, 每50对应约8秒
+    if (tick > tick_round && edp_connect){ //心跳包, 每50对应约8秒
         sensors.requestTemperatures();
         data1 = sensors.getTempCByIndex(0);
         data1=data1*100;
         data1int=int(data1);
         sprintf(cdata1, "%d", data1int); 
->>>>>>> Stashed changes
         sprintf(cdata2, "%d", data2); 
+        sprintf(cstate, "%d", state); 
         tick = 0;
         delay(500);
         packetSend(packetDataSaveTrans(NULL, "data1", cdata1)); //将新数据值上传至数据流
         delay(500);
-        packetSend(packetDataSaveTrans(NULL, "data2", cdata1)); //将新数据值上传至数据流
+        packetSend(packetDataSaveTrans(NULL, "data2", cdata2)); //将新数据值上传至数据流
+        delay(500);
+        //后备状态同步方案
+        packetSend(packetDataSaveTrans(NULL, "switch", cstate)); //同步开关状态
         delay(500);
     }
 
@@ -121,14 +129,9 @@ void loop(){
 
                 sscanf(edp_command, "%[^:]:%s", datastr, val);// switch:[1/0] 
 
-                if (val[1] == '1'){
-                    Open();
-                    state = 1;
-                }   
-                if (val[1] == '0')  {
-                    Close();
-                    state = 0;
-                }
+                if (val[1] == '1')  Open();
+                if (val[1] == '0')  Close();
+                
                 sprintf(cstate, "%d", state); 
                 packetSend(packetDataSaveTrans(NULL, "switch", cstate)); //同步开关状态
                 break;
@@ -170,23 +173,23 @@ bool doCmdOk(String data, char* keyword){
 }
 
 void Open(){ //开门
-  digitalWrite(lock_pin, HIGH);
-  
-  digitalWrite(close_pin,LOW);
-  digitalWrite(open_pin,HIGH);
-  delay(600);
-  digitalWrite(close_pin,LOW);
-  digitalWrite(open_pin,LOW);
+    digitalWrite(lock_pin, HIGH);
+    state = 1;
+    digitalWrite(close_pin,LOW);
+    digitalWrite(open_pin,HIGH);
+    delay(600);
+    digitalWrite(close_pin,LOW);
+    digitalWrite(open_pin,LOW);
 }
 
 void Close(){ //关门
-  digitalWrite(lock_pin, LOW);
-  
-  digitalWrite(close_pin,HIGH);
-  digitalWrite(open_pin,LOW);
-  delay(600);
-  digitalWrite(close_pin,LOW);
-  digitalWrite(open_pin,LOW);
+    digitalWrite(lock_pin, LOW);
+    state = 0;
+    digitalWrite(close_pin,HIGH);
+    digitalWrite(open_pin,LOW);
+    delay(600);
+    digitalWrite(close_pin,LOW);
+    digitalWrite(open_pin,LOW);
 }
 
 /*

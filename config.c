@@ -1,22 +1,15 @@
-#define KEY  "KjUxkA8bV1JUnlVctGaVCsITH5Y="    //APIkey 
-#define ID   "910385808"                          //�豸ID
-#define open_pin 7
-#define close_pin 8
-#define lock_pin 12
-#define wifi_pin 13
-<<<<<<< Updated upstream
-#define _baudrate   115200
-#define WIFI_UART   Serial
-#define tick_round 200
-=======
-#define password_pin 4
-#define smoke_pin 0
-#define fire_pin 9
-#define _baudrate   115200
-#define WIFI_UART   Serial
-#define tick_round 200
-#define ONE_WIRE_BUS 2 
-#define fire_auto_open 1
-#define smoke_threshold 180
-#define smoke_threshold_close 100
->>>>>>> Stashed changes
+#define KEY  "KjUxkA8bV1JUnlVctGaVCsITH5Y="     //APIkey 
+#define ID   "910385808"                                        //设备ID
+#define smoke_pin 0                                             //烟雾传感器管脚
+#define ONE_WIRE_BUS 2                                     //温度传感器管脚
+#define password_pin 4                                        //密码扩展板管脚
+#define open_pin 7                                              //门锁单元管脚（开）
+#define close_pin 8                                             //门锁单元管脚（关）
+#define fire_pin 9                                                //火灾指示LED灯管脚
+#define lock_pin 12                                             //开锁指示LED灯管脚
+#define wifi_pin 13                                              //OneNet连接情况指示LED灯管脚
+#define tick_round 150                                       //数据同步间隔，每100tick约对应16秒
+#define _baudrate   115200                                //串口波特率
+#define fire_auto_open 1                                   //设置检测到火灾时是否自动开门，1为开启自动开门功能，0为关闭自动开门功能
+#define smoke_threshold 180                            //设置火灾报警阈值，取值范围：0~1023，推荐值180~500，越低对火情越敏感
+#define smoke_threshold_close 100                   //设置在已触发火警的情况下，认为火情结束而自动关闭火警的烟雾浓度阈值，取值范围：0~1023，推荐值80~140，越低越难关闭火警
